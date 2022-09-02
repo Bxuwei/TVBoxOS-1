@@ -1,9 +1,15 @@
 package com.github.tvbox.osc.ui.activity;
 
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -72,16 +78,43 @@ public class SearchActivity extends BaseActivity {
     private PinyinAdapter wordAdapter;
     private String searchTitle = "";
 
+
     @Override
     protected int getLayoutResID() {
         return R.layout.activity_search;
     }
 
+
+    private static Boolean hasKeyBoard;
     @Override
     protected void init() {
+        disableKeyboard(SearchActivity.this);
         initView();
         initViewModel();
         initData();
+    }
+
+    /*
+     * 禁止软键盘
+     * @param activity Activity
+     */
+    public static void disableKeyboard(Activity activity) {
+        hasKeyBoard = false;
+        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+    }
+
+    /*
+     * 启用软键盘
+     * @param activity Activity
+     */
+    public static void enableKeyboard(Activity activity) {
+        hasKeyBoard = true;
+        activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+    }
+
+    public void openSystemKeyBoard() {
+        InputMethodManager imm = (InputMethodManager) this.getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.showSoftInput(this.getCurrentFocus(), InputMethodManager.SHOW_FORCED);
     }
 
     private List<Runnable> pauseRunnable = null;
@@ -170,6 +203,17 @@ public class SearchActivity extends BaseActivity {
                 etSearch.setText("");
             }
         });
+        etSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                Toast.makeText(mContext,"点击",Toast.LENGTH_SHORT).show();
+                if(!hasKeyBoard)enableKeyboard(SearchActivity.this);
+                openSystemKeyBoard();//再次尝试拉起键盘
+                SearchActivity.this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
+        });
+
+//        etSearch.setOnFocusChangeListener(tvSearchFocusChangeListener);
         keyboard.setOnSearchKeyListener(new SearchKeyboard.OnSearchKeyListener() {
             @Override
             public void onSearchKey(int pos, String key) {
@@ -372,6 +416,7 @@ public class SearchActivity extends BaseActivity {
         }
     }
 
+
     private void cancel() {
         OkGo.getInstance().cancelTag("search");
     }
@@ -389,5 +434,19 @@ public class SearchActivity extends BaseActivity {
             th.printStackTrace();
         }
         EventBus.getDefault().unregister(this);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            int keyCode = event.getKeyCode();
+            if (keyCode == KeyEvent.KEYCODE_MENU) {
+                if(!hasKeyBoard)enableKeyboard(SearchActivity.this);
+                openSystemKeyBoard();//再次尝试拉起键盘
+                getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
+        } else if (event.getAction() == KeyEvent.ACTION_UP) {
+        }
+        return super.dispatchKeyEvent(event);
     }
 }
